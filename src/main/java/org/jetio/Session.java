@@ -6,7 +6,9 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.jetlang.channels.Publisher;
@@ -21,8 +23,8 @@ import org.slf4j.LoggerFactory;
 public class Session {
     private static final Logger logger = LoggerFactory.getLogger( Session.class );
 
-    private final AtomicReference<SelectionKey> readKey = new AtomicReference<SelectionKey>();
-    private final AtomicReference<SelectionKey> writeKey = new AtomicReference<SelectionKey>();
+    private final Map<SelectionOp, AtomicReference<SelectionKey>> keys =
+        new EnumMap<SelectionOp, AtomicReference<SelectionKey>>( SelectionOp.class );
 
     private final List<ByteBuffer> toWrite = Collections.synchronizedList( new ArrayList<ByteBuffer>() );
     private final SocketChannel channel;
@@ -33,6 +35,10 @@ public class Session {
         this.channel = channel;
         this.addToWriteSelector = addToWriteSelector;
         this.failed = failed;
+
+        for ( SelectionOp op : SelectionOp.values() ) {
+            keys.put( op, new AtomicReference<SelectionKey>() );
+        }
     }
 
     /**
@@ -44,23 +50,16 @@ public class Session {
         return channel;
     }
 
-    void setReadKey( SelectionKey key ) {
-        setKey( "read", readKey, key );
-    }
-
-    void setWriteKey( SelectionKey key ) {
-        setKey( "write", writeKey, key );
-    }
-
-    private void setKey( String type, AtomicReference<SelectionKey> reference, SelectionKey key ) {
-        if ( !reference.compareAndSet( null, key ) ) {
-            throw new IllegalStateException( "already have a " + type + " key for " + this );
+    void setKey( SelectionOp op, SelectionKey key ) {
+        if ( !keys.get( op ).compareAndSet( null, key ) ) {
+            throw new IllegalStateException( "already have a " + op + " key for " + this );
         }
     }
 
     void cancelKeys() {
-        cancelKey( readKey );
-        cancelKey( writeKey );
+        for ( AtomicReference<SelectionKey> reference : keys.values() ) {
+            cancelKey( reference );
+        }
     }
 
     private void cancelKey( AtomicReference<SelectionKey> reference ) {
@@ -134,7 +133,7 @@ public class Session {
             toWrite.subList( 0, count ).clear();
 
             if ( toWrite.isEmpty() ) {
-                cancelKey( writeKey );
+                cancelKey( keys.get( SelectionOp.Write ) );
             }
         }
     }

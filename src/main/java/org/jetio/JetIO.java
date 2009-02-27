@@ -14,6 +14,7 @@ import org.jetio.util.ProducerThreadSubscription;
 import org.jetio.util.WorkerThreadFactory;
 import org.jetlang.channels.Channel;
 import org.jetlang.channels.MemoryChannel;
+import org.jetlang.channels.Subscriber;
 import org.jetlang.core.Disposable;
 import org.jetlang.fibers.Fiber;
 import org.jetlang.fibers.PoolFiberFactory;
@@ -100,6 +101,24 @@ public class JetIO implements Disposable, Startable {
         fiberFactory.dispose();
 
         workers.shutdownNow();
+    }
+
+    /**
+     * Channel that represents sessions that have been opened.
+     *
+     * @return {@link Subscriber} that can be used to subscribe to new session notifications
+     */
+    public Subscriber<Event> opened() {
+        return opened;
+    }
+
+    /**
+     * Channel that represents sessions that have been closed.
+     *
+     * @return {@link Subscriber} that can be used to subscribe to closed session notifications
+     */
+    public Subscriber<Event> closed() {
+        return closed;
     }
 
     private Fiber newFiber() {

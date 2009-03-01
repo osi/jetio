@@ -13,13 +13,17 @@ import org.jetlang.channels.Publisher;
 class SessionFactory {
     private final Publisher<Event> addToWriteSelector;
     private final Publisher<DataEvent<IOException>> failed;
+    private final Publisher<Event> closed;
 
-    SessionFactory( Publisher<Event> addToWriteSelector, Publisher<DataEvent<IOException>> failed ) {
+    SessionFactory( Publisher<Event> addToWriteSelector,
+                    Publisher<DataEvent<IOException>> failed,
+                    Publisher<Event> closed ) {
         this.addToWriteSelector = addToWriteSelector;
         this.failed = failed;
+        this.closed = closed;
     }
 
     Session create( SocketChannel channel ) {
-        return new Session( channel, addToWriteSelector, failed );
+        return new Session( channel, addToWriteSelector, failed, closed );
     }
 }

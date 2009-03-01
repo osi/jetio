@@ -30,11 +30,17 @@ public class Session {
     private final SocketChannel channel;
     private final Publisher<Event> addToWriteSelector;
     private final Publisher<DataEvent<IOException>> failed;
+    private final Publisher<Event> closed;
 
-    Session( SocketChannel channel, Publisher<Event> addToWriteSelector, Publisher<DataEvent<IOException>> failed ) {
+    Session( SocketChannel channel,
+             Publisher<Event> addToWriteSelector,
+             Publisher<DataEvent<IOException>> failed,
+             Publisher<Event> closed )
+    {
         this.channel = channel;
         this.addToWriteSelector = addToWriteSelector;
         this.failed = failed;
+        this.closed = closed;
 
         for ( SelectionOp op : SelectionOp.values() ) {
             keys.put( op, new AtomicReference<SelectionKey>() );
@@ -136,5 +142,17 @@ public class Session {
                 cancelKey( keys.get( SelectionOp.Write ) );
             }
         }
+    }
+
+    public void close() {
+        cancelKeys();
+
+        try {
+            channel.close();
+        } catch( IOException e ) {
+            logger.info( "Exception closing " + this, e );
+        }
+
+        closed.publish( new Event( this ) );
     }
 }

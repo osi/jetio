@@ -15,26 +15,12 @@ import org.slf4j.LoggerFactory;
 class DisconnectFailedSessions implements Callback<DataEvent<IOException>> {
     private static final Logger logger = LoggerFactory.getLogger( DisconnectFailedSessions.class );
 
-    private final Publisher<Event> closed;
-
-    DisconnectFailedSessions( Publisher<Event> closed ) {
-        this.closed = closed;
-    }
-
     @Override
     public void onMessage( DataEvent<IOException> message ) {
         Session session = message.session();
 
-        logger.info( "closing " + session, message.data() );
+        logger.info( "closing " + session + " due to", message.data() );
 
-        session.cancelKeys();
-
-        try {
-            session.channel().close();
-        } catch( IOException e ) {
-            logger.info( "Exception closing " + session, e );
-        }
-
-        closed.publish( new Event( session ) );
+        session.close();
     }
 }

@@ -60,7 +60,7 @@ public class JetIO implements Disposable, Startable {
         register( new Acceptor(
             config,
             new MultiPublisher<Event>( opened, config.isReadUponConnect() ? readNext : addToReadSelector ),
-            new SessionFactory( addToWriteSelector, failed ) ) );
+            new SessionFactory( addToWriteSelector, failed, closed ) ) );
 
         addToReadSelector.subscribe( newFiber(), register( new ReadSelector( readNext, failed, config ) ) );
 
@@ -74,7 +74,7 @@ public class JetIO implements Disposable, Startable {
 
         addToWriteSelector.subscribe( newFiber(), register( new WriteSelector( failed, config ) ) );
 
-        failed.subscribe( newFiber(), new DisconnectFailedSessions( closed ) );
+        failed.subscribe( newFiber(), new DisconnectFailedSessions() );
     }
 
     @Override

@@ -9,9 +9,10 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.jetlang.channels.Publisher;
 import org.slf4j.Logger;
@@ -29,11 +30,12 @@ public class Session {
         new EnumMap<SelectionOp, AtomicReference<SelectionKey>>( SelectionOp.class );
 
     private final List<ByteBuffer> toWrite = Collections.synchronizedList( new ArrayList<ByteBuffer>() );
-    private final ConcurrentMap<Object,Object> properties = new ConcurrentHashMap<Object,Object>( );
+    private final ConcurrentMap<Object, Object> properties = new ConcurrentHashMap<Object, Object>();
     private final SocketChannel channel;
     private final Publisher<Event> addToWriteSelector;
     private final Publisher<DataEvent<IOException>> failed;
     private final Publisher<Event> closed;
+    private final AtomicBoolean sentClosedEvent = new AtomicBoolean( false );
 
     Session( SocketChannel channel,
              Publisher<Event> addToWriteSelector,
@@ -147,19 +149,25 @@ public class Session {
         }
     }
 
-    public void close() {
-        cancelKeys();
-
-        try {
-            channel.close();
-        } catch( IOException e ) {
-            logger.info( "Exception closing " + this, e );
-        }
-
-        closed.publish( new Event( this ) );
+    public boolean isClosed() {
+        return sentClosedEvent.get();
     }
 
-    public ConcurrentMap<Object,Object> properties()  {
+    public void close() {
+        if ( sentClosedEvent.compareAndSet( false, true ) ) {
+            cancelKeys();
+
+            try {
+                channel.close();
+            } catch( IOException e ) {
+                logger.info( "Exception closing " + this, e );
+            }
+
+            closed.publish( new Event( this ) );
+        }
+    }
+
+    public ConcurrentMap<Object, Object> properties() {
         return properties;
     }
 }

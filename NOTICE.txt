@@ -1,4 +1,4 @@
-JetIO
+jetIO
 Copyright 2009 Peter Royal
 
 Please refer to each LICENSE.<component>.txt file for the
@@ -10,3 +10,12 @@ copyright by SLF4J.ORG and QOS.ch.  The original software is
 available from
 
    http://www.slf4j.org/
+
+Some utility code and lots of inspiration is provided by the
+Apache MINA project, which is open source software produced
+by the Apache Software Foundation. Copyright is held by the
+Apache Software Foundation. The original software is
+available from
+
+    http://mina.apache.org/
+    

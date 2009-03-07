@@ -103,11 +103,14 @@ public class EchoTest {
                 Runnable runnable = new Runnable() {
                     @Override
                     public void run() {
-                        session.write( charset.encode( s ) );
-                        session.write( ByteBuffer.wrap( new byte[]{ '\n' } ) );
+                        try {
+                            session.write( charset.encode( s ), ByteBuffer.wrap( new byte[]{ '\n' } ) );
 
-                        if ( remaining.decrementAndGet() > 0 ) {
-                            scheduler.schedule( this, 100, TimeUnit.MILLISECONDS );
+                            if ( remaining.decrementAndGet() > 0 ) {
+                                scheduler.schedule( this, 100, TimeUnit.MILLISECONDS );
+                            }
+                        } catch( Exception e ) {
+                            e.printStackTrace();
                         }
                     }
                 };

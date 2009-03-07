@@ -4,10 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -28,14 +25,12 @@ public class Session {
 
     private final Map<SelectionOp, AtomicReference<SelectionKey>> keys =
         new EnumMap<SelectionOp, AtomicReference<SelectionKey>>( SelectionOp.class );
-
-    private final List<ByteBuffer> toWrite = Collections.synchronizedList( new ArrayList<ByteBuffer>() );
     private final ConcurrentMap<Object, Object> properties = new ConcurrentHashMap<Object, Object>();
-    private final SocketChannel channel;
-    private final Publisher<Event> addToWriteSelector;
-    private final Publisher<DataEvent<IOException>> failed;
-    private final Publisher<Event> closed;
     private final AtomicBoolean sentClosedEvent = new AtomicBoolean( false );
+
+    private final WriteQueue writeQueue;
+    private final SocketChannel channel;
+    private final Publisher<Event> closed;
 
     Session( SocketChannel channel,
              Publisher<Event> addToWriteSelector,
@@ -43,9 +38,8 @@ public class Session {
              Publisher<Event> closed )
     {
         this.channel = channel;
-        this.addToWriteSelector = addToWriteSelector;
-        this.failed = failed;
         this.closed = closed;
+        this.writeQueue = new WriteQueue( this, addToWriteSelector, failed );
 
         for ( SelectionOp op : SelectionOp.values() ) {
             keys.put( op, new AtomicReference<SelectionKey>() );
@@ -71,6 +65,10 @@ public class Session {
         for ( AtomicReference<SelectionKey> reference : keys.values() ) {
             cancelKey( reference );
         }
+    }
+
+    void cancelWriteKey() {
+        cancelKey( keys.get( SelectionOp.Write ) );
     }
 
     private void cancelKey( AtomicReference<SelectionKey> reference ) {
@@ -106,47 +104,21 @@ public class Session {
     /**
      * Write a message to this session.
      *
-     * @param buffer {@link ByteBuffer} containing message to write
+     * If the session is in blocking mode, it will be written immediately.
+     *
+     * If the session is in non-blocking mode, and there are no pending writes, it will attempt to write what it can
+     * immediately, and queue the rest.
+     *
+     * Otherwise, data is added to the write queue.
+     *
+     * @param buffers {@link ByteBuffer}s containing messages to write
      */
-    public void write( ByteBuffer buffer ) {
-        // TODO return a WriteFuture-like thing
-        // TODO only "write right now"
-        synchronized( channel.blockingLock() ) {
-            if ( channel.isBlocking() ) {
-                // TODO what if there is stuff in the queue and we've cancelled the key?
-                try {
-                    channel.write( buffer );
-                } catch( IOException e ) {
-                    failed.publish( new DataEvent<IOException>( this, e ) );
-
-                    // TODO return FAIL on the future
-                }
-            } else {
-                boolean empty = toWrite.isEmpty();
-
-                toWrite.add( buffer );
-
-                if ( empty ) {
-                    addToWriteSelector.publish( new Event( this ) );
-                }
-            }
-        }
+    public void write( ByteBuffer... buffers ) {
+        writeQueue.add( buffers );
     }
 
-    ByteBuffer[] writeQueue() {
-        synchronized( toWrite ) {
-            return toWrite.toArray( new ByteBuffer[toWrite.size()] );
-        }
-    }
-
-    void written( int count ) {
-        synchronized( toWrite ) {
-            toWrite.subList( 0, count ).clear();
-
-            if ( toWrite.isEmpty() ) {
-                cancelKey( keys.get( SelectionOp.Write ) );
-            }
-        }
+    void processWriteQueue() throws IOException {
+        writeQueue.process();
     }
 
     public boolean isClosed() {

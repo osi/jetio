@@ -61,7 +61,7 @@ abstract class AbstractSelector implements Callback<Event>, Runnable, Lifecycle 
         logger.debug( "adding {} to selector", session, op );
 
         session.setNonBlocking();
-        session.setKey( op, session.channel().register( selector, op.op(), session ) );
+        session.selectionKeys().set( op, session.channel().register( selector, op.op(), session ) );
     }
 
     @Override

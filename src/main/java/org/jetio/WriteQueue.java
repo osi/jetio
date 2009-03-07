@@ -104,7 +104,7 @@ class WriteQueue {
             // TODO thinking about ensuring that the queue's underlying list doesn't get too big. ArrayList.trimToSize
 
             if ( queue.isEmpty() ) {
-                session.cancelWriteKey();
+                session.selectionKeys().cancel( SelectionOp.Write );
             }
         }
     }

@@ -2,14 +2,10 @@ package org.jetio;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
-import java.util.EnumMap;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.jetlang.channels.Publisher;
 import org.slf4j.Logger;
@@ -23,12 +19,11 @@ import org.slf4j.LoggerFactory;
 public class Session {
     private static final Logger logger = LoggerFactory.getLogger( Session.class );
 
-    private final Map<SelectionOp, AtomicReference<SelectionKey>> keys =
-        new EnumMap<SelectionOp, AtomicReference<SelectionKey>>( SelectionOp.class );
     private final ConcurrentMap<Object, Object> properties = new ConcurrentHashMap<Object, Object>();
     private final AtomicBoolean sentClosedEvent = new AtomicBoolean( false );
 
     private final WriteQueue writeQueue;
+    private final SelectionKeys selectionKeys;
     private final SocketChannel channel;
     private final Publisher<Event> closed;
 
@@ -40,10 +35,7 @@ public class Session {
         this.channel = channel;
         this.closed = closed;
         this.writeQueue = new WriteQueue( this, addToWriteSelector, failed );
-
-        for ( SelectionOp op : SelectionOp.values() ) {
-            keys.put( op, new AtomicReference<SelectionKey>() );
-        }
+        this.selectionKeys = new SelectionKeys( this );
     }
 
     /**
@@ -55,32 +47,12 @@ public class Session {
         return channel;
     }
 
-    void setKey( SelectionOp op, SelectionKey key ) {
-        if ( !keys.get( op ).compareAndSet( null, key ) ) {
-            throw new IllegalStateException( "already have a " + op + " key for " + this );
-        }
-    }
-
-    void cancelKeys() {
-        for ( AtomicReference<SelectionKey> reference : keys.values() ) {
-            cancelKey( reference );
-        }
-    }
-
-    void cancelWriteKey() {
-        cancelKey( keys.get( SelectionOp.Write ) );
-    }
-
-    private void cancelKey( AtomicReference<SelectionKey> reference ) {
-        SelectionKey key = reference.getAndSet( null );
-
-        if ( null != key ) {
-            key.cancel();
-        }
+    SelectionKeys selectionKeys() {
+        return selectionKeys;
     }
 
     void setBlocking() throws IOException {
-        cancelKeys();
+        selectionKeys.cancel();
 
         boolean before = channel.isBlocking();
 
@@ -127,7 +99,7 @@ public class Session {
 
     public void close() {
         if ( sentClosedEvent.compareAndSet( false, true ) ) {
-            cancelKeys();
+            selectionKeys.cancel();
 
             try {
                 channel.close();

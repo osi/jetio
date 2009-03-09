@@ -35,36 +35,30 @@ class WriteQueue {
     void add( ByteBuffer[] buffers ) {
         SocketChannel channel = session.channel();
 
-        synchronized( channel.blockingLock() ) {
-            try {
-                boolean empty = queue.isEmpty();
+        try {
+            boolean empty = queue.isEmpty();
 
-                if ( channel.isBlocking() ) {
-                    if ( !empty ) {
-                        process();
-                    }
-
-                    write( buffers );
-                } else if ( empty ) {
-                    // Shamelessly borrow this idea from Netty!
-                    int cleared = write( buffers );
-
-                    if ( cleared < buffers.length ) {
-                        queue.addAll( Arrays.asList( buffers ).subList( cleared, buffers.length ) );
-                        addToWriteSelector.publish( new Event( session ) );
-                    }
-                } else {
-                    queue.addAll( Arrays.asList( buffers ) );
+            if ( channel.isBlocking() ) {
+                if ( !empty ) {
+                    process();
                 }
-            } catch( IOException e ) {
-                failed.publish( new DataEvent<IOException>( session, e ) );
-                // TODO return FAIL on the future, when that occurs
+
+                write( buffers );
+            } else {
+                queue.addAll( Arrays.asList( buffers ) );
+
+                if ( empty && !process() ) {
+                    addToWriteSelector.publish( new Event( session ) );
+                }
             }
+        } catch( IOException e ) {
+            failed.publish( new DataEvent<IOException>( session, e ) );
+            // TODO return FAIL on the future, when that occurs
         }
     }
 
-    void process() throws IOException {
-        written( write( writeQueue() ) );
+    synchronized boolean process() throws IOException {
+        return written( write( writeQueue() ) );
     }
 
     private int write( ByteBuffer[] buffers ) throws IOException {
@@ -97,7 +91,14 @@ class WriteQueue {
         }
     }
 
-    private void written( int count ) {
+    /**
+     * Remove written buffers from the queue
+     *
+     * @param count Number of buffers that were consumed
+     *
+     * @return True if the queue is now empty
+     */
+    private boolean written( int count ) {
         synchronized( queue ) {
             queue.subList( 0, count ).clear();
 
@@ -105,7 +106,11 @@ class WriteQueue {
 
             if ( queue.isEmpty() ) {
                 session.selectionKeys().cancel( SelectionOp.Write );
+
+                return true;
             }
+
+            return false;
         }
     }
 }

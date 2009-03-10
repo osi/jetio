@@ -92,7 +92,7 @@ public class EchoTest {
     public void delayedEcho() throws Exception {
         scheduler = Executors.newSingleThreadScheduledExecutor();
 
-        final int count = 5;
+        final int count = 10;
 
         echo( new StreamMessageReader() {
             @Override
@@ -104,7 +104,12 @@ public class EchoTest {
                     @Override
                     public void run() {
                         try {
-                            session.write( charset.encode( s ), ByteBuffer.wrap( new byte[]{ '\n' } ) );
+                            ByteBuffer buffer = session.buffers().acquire();
+                            buffer.put( charset.encode( s ) );
+                            buffer.put( (byte) '\n' );
+                            buffer.flip();
+
+                            session.write( buffer );
 
                             if ( remaining.decrementAndGet() > 0 ) {
                                 scheduler.schedule( this, 100, TimeUnit.MILLISECONDS );

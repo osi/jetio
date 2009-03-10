@@ -26,15 +26,18 @@ public class Session {
     private final SelectionKeys selectionKeys;
     private final SocketChannel channel;
     private final Publisher<Event> closed;
+    private final BufferSource buffers;
 
     Session( SocketChannel channel,
              Publisher<Event> addToWriteSelector,
              Publisher<DataEvent<IOException>> failed,
-             Publisher<Event> closed )
+             Publisher<Event> closed,
+             BufferSource buffers )
     {
         this.channel = channel;
         this.closed = closed;
-        this.writeQueue = new WriteQueue( this, addToWriteSelector, failed );
+        this.buffers = buffers;
+        this.writeQueue = new WriteQueue( this, addToWriteSelector, failed, buffers );
         this.selectionKeys = new SelectionKeys( this );
     }
 
@@ -93,10 +96,20 @@ public class Session {
         writeQueue.process();
     }
 
+    /**
+     * Check to see if this session is closed
+     *
+     * @return True if the session is closed
+     */
     public boolean isClosed() {
         return sentClosedEvent.get();
     }
 
+    /**
+     * Close this session
+     *
+     * First call will close it, subsequent calls have no effect.
+     */
     public void close() {
         if ( sentClosedEvent.compareAndSet( false, true ) ) {
             selectionKeys.cancel();
@@ -111,7 +124,21 @@ public class Session {
         }
     }
 
+    /**
+     * Get the {@link ConcurrentMap} of user-defined properties associated with this session
+     *
+     * @return The map of user-defined properties
+     */
     public ConcurrentMap<Object, Object> properties() {
         return properties;
+    }
+
+    /**
+     * Get the source of <em>write</em> buffers associated with this session.
+     *
+     * @return {@link BufferSource} for this session
+     */
+    public BufferSource buffers() {
+        return buffers;
     }
 }

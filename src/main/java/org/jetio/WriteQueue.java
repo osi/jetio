@@ -23,12 +23,14 @@ class WriteQueue {
     private final List<ByteBuffer> queue = Collections.synchronizedList( new ArrayList<ByteBuffer>() );
     private final Publisher<Event> addToWriteSelector;
     private final Publisher<DataEvent<IOException>> failed;
+    private final BufferSource buffers;
     private final Session session;
 
-    WriteQueue( Session session, Publisher<Event> addToWriteSelector, Publisher<DataEvent<IOException>> failed ) {
+    WriteQueue( Session session, Publisher<Event> addToWriteSelector, Publisher<DataEvent<IOException>> failed, BufferSource buffers ) {
         this.session = session;
         this.addToWriteSelector = addToWriteSelector;
         this.failed = failed;
+        this.buffers = buffers;
     }
 
     // TODO return a WriteFuture-like thing
@@ -44,6 +46,8 @@ class WriteQueue {
                 }
 
                 write( buffers );
+
+                this.buffers.release( Arrays.asList( buffers ) );
             } else {
                 queue.addAll( Arrays.asList( buffers ) );
 
@@ -100,7 +104,11 @@ class WriteQueue {
      */
     private boolean written( int count ) {
         synchronized( queue ) {
-            queue.subList( 0, count ).clear();
+            List<ByteBuffer> written = queue.subList( 0, count );
+
+            this.buffers.release( written );
+            
+            written.clear();
 
             // TODO thinking about ensuring that the queue's underlying list doesn't get too big. ArrayList.trimToSize
 

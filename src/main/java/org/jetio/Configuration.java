@@ -19,6 +19,8 @@ public class Configuration {
     private long disposalWaitTime = TimeUnit.SECONDS.toMillis( 5 );
     private boolean readUponConnect;
     private int workerThreadCount = 100;
+    private int bufferSlizeSize = 4096;
+    private int bufferAllocationSize = 1048576;
 
     /**
      * Get the name of this instance
@@ -100,5 +102,21 @@ public class Configuration {
 
     int getCounter() {
         return counter;
+    }
+
+    public int getBufferSlizeSize() {
+        return bufferSlizeSize;
+    }
+
+    public void setBufferSlizeSize( int bufferSlizeSize ) {
+        this.bufferSlizeSize = bufferSlizeSize;
+    }
+
+    public int getBufferAllocationSize() {
+        return bufferAllocationSize;
+    }
+
+    public void setBufferAllocationSize( int bufferAllocationSize ) {
+        this.bufferAllocationSize = bufferAllocationSize;
     }
 }

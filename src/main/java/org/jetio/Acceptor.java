@@ -36,7 +36,7 @@ class Acceptor implements Runnable, Lifecycle {
         this.sessionFactory = sessionFactory;
 
         this.ssc = ServerSocketChannel.open();
-        this.thread = new Thread( this, "accept " + this.config.getName() + "[" + config.getCounter() + "]" );
+        this.thread = new Thread( this, "accept " + this.config.getName() + "-" + config.getCounter() );
     }
 
     @Override

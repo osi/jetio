@@ -35,7 +35,7 @@ abstract class AbstractSelector implements Callback<Event>, Runnable, Lifecycle 
         this.failed = failed;
 
         this.selector = Selector.open();
-        this.thread = new Thread( this, op + " " + this.config.getName() + "[" + config.getCounter() + "]" );
+        this.thread = new Thread( this, op + " " + this.config.getName() + "-" + config.getCounter() );
     }
 
     /**

@@ -14,7 +14,7 @@ public class WorkerThreadFactory implements ThreadFactory {
 
     public WorkerThreadFactory( String name, int id ) {
         threadNumber = new AtomicInteger( 1 );
-        suffix = " " + name + "[" + id + "]";
+        suffix = " " + name + "-" + id;
     }
 
     @Override

@@ -10,7 +10,6 @@ import org.jetio.lifecycle.Lifecycle;
 import org.jetio.lifecycle.Startable;
 import org.jetio.util.ExecutorBatchExecutor;
 import org.jetio.util.MultiPublisher;
-import org.jetio.util.ProducerThreadSubscription;
 import org.jetio.util.WorkerThreadFactory;
 import org.jetlang.channels.Channel;
 import org.jetlang.channels.MemoryChannel;
@@ -35,7 +34,7 @@ public class JetIO implements Disposable, Startable {
     private final Channel<Event> readNext = new MemoryChannel<Event>();
     private final Channel<Event> readAgain = new MemoryChannel<Event>();
 
-    private final Channel<DataEvent<Byte>> read = new MemoryChannel<DataEvent<Byte>>();
+    private final MemoryChannel<DataEvent<Byte>> read = new MemoryChannel<DataEvent<Byte>>();
 
     private final Channel<Event> addToReadSelector = new MemoryChannel<Event>();
     private final Channel<Event> addToWriteSelector = new MemoryChannel<Event>();
@@ -68,11 +67,10 @@ public class JetIO implements Disposable, Startable {
 
         CheckForReadReadiness reader = new CheckForReadReadiness( addToReadSelector, read, failed );
         readNext.subscribe( register( fiberFactory.create( new ExecutorBatchExecutor( workers ) ) ), reader );
-        readAgain.subscribe( new ProducerThreadSubscription<Event>( newFiber(), reader ) );
 
-        read.subscribe( new ProducerThreadSubscription<DataEvent<Byte>>(
-            newFiber(),
-            new ReadOneMessage( messageReader, readAgain, failed ) ) );
+        Fiber producerThread = newFiber();
+        read.subscribeOnProducerThread( producerThread, new ReadOneMessage( messageReader, readAgain, failed ) );
+        readAgain.subscribe( producerThread, reader );
 
         addToWriteSelector.subscribe( newFiber(), register( new WriteSelector( failed, config ) ) );
 

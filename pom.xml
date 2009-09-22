@@ -4,7 +4,7 @@
 
     <groupId>org.jetio</groupId>
     <artifactId>jetio</artifactId>
-    <version>M1</version>
+    <version>M2-SNAPSHOT</version>
 
     <name>JetIO</name>
 

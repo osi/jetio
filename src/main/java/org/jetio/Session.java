@@ -27,6 +27,11 @@ public class Session {
     private final SocketChannel channel;
     private final Publisher<Event> closed;
     private final BufferSource buffers;
+    /**
+     * Store our own copy of the blocking status of the channel,
+     * as checking it on the Channel requires acquiring a lock
+     */
+    private volatile boolean blocking;
 
     Session( SocketChannel channel,
              Publisher<Event> addToWriteSelector,
@@ -39,6 +44,7 @@ public class Session {
         this.buffers = buffers;
         this.writeQueue = new WriteQueue( this, addToWriteSelector, failed, buffers );
         this.selectionKeys = new SelectionKeys( this );
+        this.blocking = channel.isBlocking();
     }
 
     /**
@@ -54,24 +60,34 @@ public class Session {
         return selectionKeys;
     }
 
+    boolean isBlocking() {
+        return blocking;
+    }
+
     void setBlocking() throws IOException {
         selectionKeys.cancel();
 
-        boolean before = channel.isBlocking();
-
-        channel.configureBlocking( true );
-
-        if ( !before ) {
+        if ( !configureBlocking( true ) ) {
             logger.debug( "{} switched to blocking mode", this );
         }
     }
 
+    private boolean configureBlocking( boolean state ) throws IOException {
+        boolean before;
+
+        synchronized( channel.blockingLock() ) {
+            before = channel.isBlocking();
+
+            channel.configureBlocking( state );
+
+            blocking = state;
+        }
+
+        return before;
+    }
+
     void setNonBlocking() throws IOException {
-        boolean before = channel.isBlocking();
-
-        channel.configureBlocking( false );
-
-        if ( before ) {
+        if ( configureBlocking( false ) ) {
             logger.debug( "{} switched to non-blocking mode", this );
         }
     }

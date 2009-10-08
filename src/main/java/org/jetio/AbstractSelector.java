@@ -1,6 +1,7 @@
 package org.jetio;
 
 import java.io.IOException;
+import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.util.ArrayList;
@@ -69,6 +70,8 @@ abstract class AbstractSelector implements Callback<Event>, Runnable, Lifecycle 
         while ( !Thread.interrupted() ) {
             try {
                 selector.select();
+            } catch( CancelledKeyException e ) {
+                logger.debug( "Key was cancelled mid-select, ignoring", e );
             } catch( IOException e ) {
                 logger.error( "Error while selecting for " + op + "s", e );
                 break;

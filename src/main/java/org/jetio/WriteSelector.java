@@ -21,4 +21,21 @@ class WriteSelector extends AbstractSelector {
     protected void selected( SelectionKey key, Session session ) throws IOException {
         session.processWriteQueue();
     }
+
+    @Override
+    protected void addToSelector( Session session ) throws IOException {
+        SelectionKeys keys = session.selectionKeys();
+
+        if ( !session.isBlocking() && !keys.hasKey( SelectionOp.Write ) ) {
+            logger.debug( "adding {} to selector", session, op );
+
+            // We don't want this to collide with a call to change the blocking mode
+            // Acquire the lock, and if we are still non-blocking, then go ahead and schedule ourselves.
+            synchronized( session.channel().blockingLock() ) {
+                if ( !session.channel().isBlocking() ) {
+                    keys.set( op, session.channel().register( selector, op.op(), session ) );
+                }
+            }
+        }
+    }
 }

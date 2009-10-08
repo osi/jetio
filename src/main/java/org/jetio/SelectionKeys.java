@@ -37,6 +37,10 @@ class SelectionKeys {
         }
     }
 
+    boolean hasKey( SelectionOp op ) {
+        return null != keys.get( op ).get();
+    }
+
     /** Cancel all keys */
     void cancel() {
         for ( AtomicReference<SelectionKey> reference : keys.values() ) {

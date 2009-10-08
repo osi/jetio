@@ -22,10 +22,10 @@ abstract class AbstractSelector implements Callback<Event>, Runnable, Lifecycle 
     private final List<Session> toAdd = Collections.synchronizedList( new ArrayList<Session>() );
 
     private final Channel<DataEvent<IOException>> failed;
-    private final SelectionOp op;
+    protected final SelectionOp op;
     private final Configuration config;
     private final Thread thread;
-    private final Selector selector;
+    protected final Selector selector;
 
     AbstractSelector( SelectionOp op, Configuration config, Channel<DataEvent<IOException>> failed )
         throws IOException
@@ -58,12 +58,7 @@ abstract class AbstractSelector implements Callback<Event>, Runnable, Lifecycle 
         selector.wakeup();
     }
 
-    private void addToSelector( Session session ) throws IOException {
-        logger.debug( "adding {} to selector", session, op );
-
-        session.setNonBlocking();
-        session.selectionKeys().set( op, session.channel().register( selector, op.op(), session ) );
-    }
+    protected abstract void addToSelector( Session session ) throws IOException;
 
     @Override
     public void run() {

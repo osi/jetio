@@ -31,4 +31,12 @@ class ReadSelector extends AbstractSelector {
 
         readNext.publish( new Event( session ) );
     }
+
+    @Override
+    protected void addToSelector( Session session ) throws IOException {
+        logger.debug( "adding {} to selector", session, op );
+
+        session.setNonBlocking();
+        session.selectionKeys().set( op, session.channel().register( selector, op.op(), session ) );
+    }
 }

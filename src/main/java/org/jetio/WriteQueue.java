@@ -40,10 +40,8 @@ class WriteQueue {
     // TODO return a WriteFuture-like thing
     void add( ByteBuffer[] buffers ) {
         try {
-            boolean empty = queue.isEmpty();
-
             if ( session.isBlocking() ) {
-                if ( !empty ) {
+                if ( !queue.isEmpty() ) {
                     process();
                 }
 
@@ -51,7 +49,12 @@ class WriteQueue {
 
                 this.buffers.release( Arrays.asList( buffers ) );
             } else {
-                queue.addAll( Arrays.asList( buffers ) );
+                boolean empty;
+
+                synchronized( queue ) {
+                    empty = queue.isEmpty();
+                    queue.addAll( Arrays.asList( buffers ) );
+                }
 
                 // If it was empty when we showed up, we're responsible for attempting to flush
                 // and scheduling for later writing if we can't fully flush now

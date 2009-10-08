@@ -65,25 +65,29 @@ public class Session {
     }
 
     void setBlocking() throws IOException {
-        selectionKeys.cancel();
-
         if ( !configureBlocking( true ) ) {
             logger.debug( "{} switched to blocking mode", this );
         }
     }
 
-    private boolean configureBlocking( boolean state ) throws IOException {
-        boolean before;
-
-        synchronized( channel.blockingLock() ) {
-            before = channel.isBlocking();
-
-            channel.configureBlocking( state );
-
-            blocking = state;
+    private boolean configureBlocking( boolean blocking ) throws IOException {
+        if ( this.blocking == blocking ) {
+            return blocking;
         }
 
-        return before;
+        synchronized( channel.blockingLock() ) {
+            if ( blocking ) {
+                selectionKeys.cancel();
+            }
+
+            boolean before = channel.isBlocking();
+
+            channel.configureBlocking( blocking );
+
+            this.blocking = blocking;
+
+            return before;
+        }
     }
 
     void setNonBlocking() throws IOException {

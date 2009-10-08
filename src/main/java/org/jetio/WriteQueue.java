@@ -26,7 +26,11 @@ class WriteQueue {
     private final BufferSource buffers;
     private final Session session;
 
-    WriteQueue( Session session, Publisher<Event> addToWriteSelector, Publisher<DataEvent<IOException>> failed, BufferSource buffers ) {
+    WriteQueue( Session session,
+                Publisher<Event> addToWriteSelector,
+                Publisher<DataEvent<IOException>> failed,
+                BufferSource buffers )
+    {
         this.session = session;
         this.addToWriteSelector = addToWriteSelector;
         this.failed = failed;
@@ -35,12 +39,10 @@ class WriteQueue {
 
     // TODO return a WriteFuture-like thing
     void add( ByteBuffer[] buffers ) {
-        SocketChannel channel = session.channel();
-
         try {
             boolean empty = queue.isEmpty();
 
-            if ( channel.isBlocking() ) {
+            if ( session.isBlocking() ) {
                 if ( !empty ) {
                     process();
                 }
@@ -51,6 +53,8 @@ class WriteQueue {
             } else {
                 queue.addAll( Arrays.asList( buffers ) );
 
+                // If it was empty when we showed up, we're responsible for attempting to flush
+                // and scheduling for later writing if we can't fully flush now
                 if ( empty && !process() ) {
                     addToWriteSelector.publish( new Event( session ) );
                 }
@@ -109,7 +113,7 @@ class WriteQueue {
             List<ByteBuffer> written = queue.subList( 0, count );
 
             this.buffers.release( written );
-            
+
             written.clear();
 
             // TODO thinking about ensuring that the queue's underlying list doesn't get too big. ArrayList.trimToSize

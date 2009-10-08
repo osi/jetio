@@ -96,16 +96,19 @@ abstract class AbstractSelector implements Callback<Event>, Runnable, Lifecycle 
     }
 
     private void processAddQueue() {
-        synchronized( toAdd ) {
-            for ( Session session : toAdd ) {
-                try {
-                    addToSelector( session );
-                } catch( IOException e ) {
-                    failed.publish( new DataEvent<IOException>( session, e ) );
-                }
-            }
+        Session[] sessions;
 
+        synchronized( toAdd ) {
+            sessions = toAdd.toArray( new Session[toAdd.size()] );
             toAdd.clear();
+        }
+
+        for ( Session session : sessions ) {
+            try {
+                addToSelector( session );
+            } catch( IOException e ) {
+                failed.publish( new DataEvent<IOException>( session, e ) );
+            }
         }
     }
 

@@ -7,6 +7,7 @@ import java.nio.channels.Selector;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.jetio.lifecycle.Lifecycle;
 import org.jetlang.channels.Channel;
@@ -26,6 +27,7 @@ abstract class AbstractSelector implements Callback<Event>, Runnable, Lifecycle 
     private final Configuration config;
     private final Thread thread;
     protected final Selector selector;
+    private final AtomicBoolean waking = new AtomicBoolean( false );
 
     AbstractSelector( SelectionOp op, Configuration config, Channel<DataEvent<IOException>> failed )
         throws IOException
@@ -55,7 +57,9 @@ abstract class AbstractSelector implements Callback<Event>, Runnable, Lifecycle 
 
         toAdd.add( session );
 
-        selector.wakeup();
+        if ( waking.compareAndSet( false, true ) ) {
+            selector.wakeup();
+        }
     }
 
     protected abstract void addToSelector( Session session ) throws IOException;
@@ -99,6 +103,8 @@ abstract class AbstractSelector implements Callback<Event>, Runnable, Lifecycle 
         synchronized( toAdd ) {
             sessions = toAdd.toArray( new Session[toAdd.size()] );
             toAdd.clear();
+
+            waking.set( false );
         }
 
         for ( Session session : sessions ) {

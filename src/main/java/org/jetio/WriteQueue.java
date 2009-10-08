@@ -62,7 +62,9 @@ class WriteQueue {
     }
 
     synchronized boolean process() throws IOException {
-        return written( write( writeQueue() ) );
+        ByteBuffer[] buffers = writeQueue();
+
+        return buffers.length == 0 || written( write( buffers ) );
     }
 
     private int write( ByteBuffer[] buffers ) throws IOException {

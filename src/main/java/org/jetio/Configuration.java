@@ -1,5 +1,6 @@
 package org.jetio;
 
+import java.net.Socket;
 import java.net.SocketAddress;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -18,6 +19,7 @@ public class Configuration {
     private int backlog;
     private long disposalWaitTime = TimeUnit.SECONDS.toMillis( 5 );
     private boolean readUponConnect;
+    private boolean tcpNoDelay;
     private int workerThreadCount = 100;
     private int bufferSlizeSize = 4096;
     private int bufferAllocationSize = 1048576;
@@ -118,5 +120,14 @@ public class Configuration {
 
     public void setBufferAllocationSize( int bufferAllocationSize ) {
         this.bufferAllocationSize = bufferAllocationSize;
+    }
+
+    /** @see Socket#getTcpNoDelay() */
+    public boolean isTcpNoDelay() {
+        return tcpNoDelay;
+    }
+
+    public void setTcpNoDelay( boolean tcpNoDelay ) {
+        this.tcpNoDelay = tcpNoDelay;
     }
 }

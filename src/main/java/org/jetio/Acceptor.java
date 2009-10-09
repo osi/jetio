@@ -69,6 +69,8 @@ class Acceptor implements Runnable, Lifecycle {
 
                     logger.debug( "accepted {}", channel );
 
+                    channel.socket().setTcpNoDelay( this.config.isTcpNoDelay() );
+
                     newConnections.publish( new Event( sessionFactory.create( channel ) ) );
                 } catch( ClosedByInterruptException e ) {
                     logger.debug( "Thread interrupted, exiting", e );

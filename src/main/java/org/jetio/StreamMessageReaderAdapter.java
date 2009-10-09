@@ -18,14 +18,14 @@ public class StreamMessageReaderAdapter implements MessageReader {
     }
 
     @Override
-    public void readMessage( Session session, byte initialByte ) throws IOException {
-        reader.readMessage( session, createInputStream( session.channel(), initialByte ) );
+    public void readMessage( Session session, byte[] initialData ) throws IOException {
+        reader.readMessage( session, createInputStream( session.channel(), initialData ) );
     }
 
-    private InputStream createInputStream( SocketChannel channel, byte b ) throws IOException {
-        PushbackInputStream in = new PushbackInputStream( channel.socket().getInputStream(), 1 );
+    private InputStream createInputStream( SocketChannel channel, byte[] data ) throws IOException {
+        PushbackInputStream in = new PushbackInputStream( channel.socket().getInputStream(), data.length );
 
-        in.unread( b );
+        in.unread( data );
 
         return in;
     }

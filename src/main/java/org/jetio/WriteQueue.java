@@ -71,10 +71,16 @@ class WriteQueue {
     synchronized boolean process() throws IOException {
         ByteBuffer[] buffers = writeQueue();
 
-        return buffers.length == 0 || written( write( buffers ) );
+        if ( buffers.length == 0 ) {
+            return true;
+        }
+
+        write( buffers );
+
+        return releaseBuffers( countClearedBuffers( buffers ) );
     }
 
-    private int write( ByteBuffer[] buffers ) throws IOException {
+    private long write( ByteBuffer[] buffers ) throws IOException {
         SocketChannel channel = session.channel();
         long written;
 
@@ -83,6 +89,12 @@ class WriteQueue {
             written = channel.write( buffers );
         }
 
+        logger.debug( "wrote {} bytes to {}", written, this );
+
+        return written;
+    }
+
+    private int countClearedBuffers( ByteBuffer[] buffers ) {
         int cleared = 0;
 
         for ( ByteBuffer buffer : buffers ) {
@@ -92,8 +104,6 @@ class WriteQueue {
                 break;
             }
         }
-
-        logger.debug( "wrote {} bytes to {}", written, this );
 
         return cleared;
     }
@@ -111,7 +121,7 @@ class WriteQueue {
      *
      * @return True if the queue is now empty
      */
-    private boolean written( int count ) {
+    private boolean releaseBuffers( int count ) {
         synchronized( queue ) {
             List<ByteBuffer> written = queue.subList( 0, count );
 

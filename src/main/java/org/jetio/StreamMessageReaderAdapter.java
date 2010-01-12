@@ -2,7 +2,6 @@ package org.jetio;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PushbackInputStream;
 import java.nio.channels.SocketChannel;
 
 /**
@@ -23,11 +22,7 @@ public class StreamMessageReaderAdapter implements MessageReader {
     }
 
     private InputStream createInputStream( SocketChannel channel, byte[] data ) throws IOException {
-        PushbackInputStream in = new PushbackInputStream( channel.socket().getInputStream(), data.length );
-
-        in.unread( data );
-
-        return in;
+        return new NonblockingPushbackInputStream( channel.socket().getInputStream(), data );
     }
 
 }

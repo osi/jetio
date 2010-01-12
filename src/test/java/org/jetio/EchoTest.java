@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.*;
+
 import static org.junit.Assert.*;
 
 /**
@@ -49,9 +50,6 @@ public class EchoTest {
 
         out.write( s );
         out.write( "\n" );
-        for ( int i = 0; i < 4085; i++ ) {
-            out.write( "\n" );
-        }
         out.flush();
 
         for ( int i = 0; i < count; i++ ) {
@@ -77,18 +75,12 @@ public class EchoTest {
         }
     }
 
-    @Test //( timeout = 2000L )
+    @Test( timeout = 2000L )
     public void echoOnce() throws Exception {
         echo( new StreamMessageReader() {
             @Override
             public void readMessage( Session session, InputStream in ) throws IOException {
-                System.out.println( in );
-                System.out.println( in.available() );
-                // TODO this (oddly) fails only when we may have read everything that there is to read already, which is strange.
-
-                // It is guaranteed, however, that if a channel is in blocking mode and there is at least one byte
-                // remaining in the buffer then this method will block until at least one byte is read.
-                BufferedReader reader = new BufferedReader( new InputStreamReader( in, "UTF-8" ), 11 );
+                BufferedReader reader = new BufferedReader( new InputStreamReader( in, "UTF-8" ) );
 
                 session.write( charset.encode( reader.readLine() ) );
                 session.write( ByteBuffer.wrap( new byte[]{ '\n' } ) );
@@ -97,7 +89,7 @@ public class EchoTest {
               1 );
     }
 
-    @Test //( timeout = 2000L )
+    @Test( timeout = 2000L )
     public void delayedEcho() throws Exception {
         scheduler = Executors.newSingleThreadScheduledExecutor();
 

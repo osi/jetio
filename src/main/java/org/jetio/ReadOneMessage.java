@@ -11,7 +11,7 @@ import org.jetlang.core.Callback;
  *
  * @author <a href="mailto:peter.royal@pobox.com">peter royal</a>
  */
-class ReadOneMessage implements Callback<DataEvent<Byte>> {
+class ReadOneMessage implements Callback<DataEvent<byte[]>> {
     private final MessageReader messageReader;
     private final Publisher<Event> readAgain;
     private final Channel<DataEvent<IOException>> failed;
@@ -23,7 +23,7 @@ class ReadOneMessage implements Callback<DataEvent<Byte>> {
     }
 
     @Override
-    public void onMessage( DataEvent<Byte> message ) {
+    public void onMessage( DataEvent<byte[]> message ) {
         Session session = message.session();
 
         try {

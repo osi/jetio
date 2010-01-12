@@ -3,7 +3,6 @@ package org.jetio;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
 
 import org.jetlang.channels.Publisher;
 import org.jetlang.core.Callback;
@@ -18,23 +17,25 @@ import org.slf4j.LoggerFactory;
 class CheckForReadReadiness implements Callback<Event> {
     private static final Logger logger = LoggerFactory.getLogger( CheckForReadReadiness.class );
 
-    private final ThreadLocal<ByteBuffer> readTestBuffer = new ThreadLocal<ByteBuffer>() {
-        @Override
-        protected ByteBuffer initialValue() {
-            return ByteBuffer.allocateDirect( 1 );
-        }
-    };
+    private final ThreadLocal<ByteBuffer> readTestBuffer;
     private final Publisher<Event> addToReadSelector;
-    private final Publisher<DataEvent<Byte>> read;
+    private final Publisher<DataEvent<byte[]>> read;
     private final Publisher<DataEvent<IOException>> failed;
 
     CheckForReadReadiness( Publisher<Event> addToReadSelector,
-                           Publisher<DataEvent<Byte>> read,
-                           Publisher<DataEvent<IOException>> failed )
+                           Publisher<DataEvent<byte[]>> read,
+                           Publisher<DataEvent<IOException>> failed,
+                           final BufferSource buffers )
     {
         this.addToReadSelector = addToReadSelector;
         this.read = read;
         this.failed = failed;
+        this.readTestBuffer = new ThreadLocal<ByteBuffer>() {
+            @Override
+            protected ByteBuffer initialValue() {
+                return buffers.acquire();
+            }
+        };
     }
 
     @Override
@@ -53,13 +54,8 @@ class CheckForReadReadiness implements Callback<Event> {
     private boolean read( Session session ) throws IOException {
         logger.debug( "attempting read on {}", session );
 
-        SocketChannel channel = session.channel();
-
-        session.setNonBlocking();
-
         ByteBuffer buffer = readTestBuffer.get();
-        buffer.position( 0 ).limit( 1 );
-        int count = channel.read( buffer );
+        int count = performRead( session, buffer );
 
         switch( count ) {
             case 0: // nothing yet
@@ -67,13 +63,34 @@ class CheckForReadReadiness implements Callback<Event> {
             case -1: // EOF
                 throw new EOFException();
             default:
-                logger.debug( "{} is ready to read", session );
-
-                session.setBlocking();
-
-                read.publish( new DataEvent<Byte>( session, buffer.get( 0 ) ) );
+                publishReadEvent( session, buffer, count );
 
                 return true;
         }
+    }
+
+    private static int performRead( Session session, ByteBuffer buffer ) throws IOException {
+        session.setNonBlocking();
+
+        buffer.clear();
+
+        return session.channel().read( buffer );
+    }
+
+    private static byte[] toByteArray( ByteBuffer buffer, int count ) {
+        byte[] data = new byte[count];
+
+        buffer.flip();
+        buffer.get( data, 0, count);
+
+        return data;
+    }
+
+    private void publishReadEvent( Session session, ByteBuffer buffer, int count ) throws IOException {
+        logger.debug( "{} is ready to read, {} bytes available", session, count );
+
+        session.setBlocking();
+
+        read.publish( new DataEvent<byte[]>( session, toByteArray( buffer, count ) ) );
     }
 }

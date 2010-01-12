@@ -34,7 +34,7 @@ public class JetIO implements Disposable, Startable {
     private final Channel<Event> readNext = new MemoryChannel<Event>();
     private final Channel<Event> readAgain = new MemoryChannel<Event>();
 
-    private final MemoryChannel<DataEvent<Byte>> read = new MemoryChannel<DataEvent<Byte>>();
+    private final MemoryChannel<DataEvent<byte[]>> read = new MemoryChannel<DataEvent<byte[]>>();
 
     private final Channel<Event> addToReadSelector = new MemoryChannel<Event>();
     private final Channel<Event> addToWriteSelector = new MemoryChannel<Event>();
@@ -65,7 +65,7 @@ public class JetIO implements Disposable, Startable {
 
         addToReadSelector.subscribe( newFiber(), register( new ReadSelector( readNext, failed, config ) ) );
 
-        CheckForReadReadiness reader = new CheckForReadReadiness( addToReadSelector, read, failed );
+        CheckForReadReadiness reader = new CheckForReadReadiness( addToReadSelector, read, failed, buffers );
         readNext.subscribe( register( fiberFactory.create( new ExecutorBatchExecutor( workers ) ) ), reader );
 
         Fiber producerThread = newFiber();
